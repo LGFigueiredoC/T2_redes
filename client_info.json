@@ -1,1 +1,12 @@
-{"login": "logTeste", "senha": "senhateste"}{"login": "logTeste2", "senha": "senhateste2"}
+{
+    "teste1":
+    {
+        "login": "logTeste",
+        "senha": "senhateste"
+    },
+    "teste2":
+    {
+        "login": "logTeste2",
+        "senha": "senhateste2"
+    }
+}
