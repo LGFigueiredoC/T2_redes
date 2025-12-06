@@ -85,6 +85,8 @@ class tcp_client():
             if choice == '1':
                 filename = input("Enter file name to play: ")
                 record = input("Save content? (y/n) ")
+                self.sock.send(str.encode("PLAY_LIVE"))
+                self.receive_live(filename, record)
                 # rodar live udp
             elif choice == '2':
                 filename = input("Enter file name to play: ")
@@ -101,17 +103,31 @@ class tcp_client():
             else:
                 print("Invalid option")
 
-    def request_recorded(self, filename):
-        cmd = f"PLAY_FILE {filename}"
-        self.sock.send(cmd.encode())
+    # def request_live(self, filename):
+    #     cmd = f"PLAY_FILE {filename}"
+    #     self.sock.send(cmd.encode())
 
-    def receive_recorded(self, filename, save_file):
-        self.request_recorded(filename)
+    def receive_live(self, filename, save_file):
+        # self.request_recorded(filename)
 
-        header = self.sock.recv(1024).decode()
-        if not header.startswith("STREAM_START"):
-            print("Invalid stream header")
-            return
+        # header = self.sock.recv(1024).decode()
+        # if not header.startswith("STREAM_START"):
+        #     print("Invalid stream header")
+        #     return
+        chunks = []
+
+        while True:
+            data = self.sock.recv(1024)
+            if data.decode("utf-8") == "END_STREAM":
+                break
+            chunks.append(data)
+        
+        print("Arquivo recebido")
+
+            
+
+
+
 
 
 

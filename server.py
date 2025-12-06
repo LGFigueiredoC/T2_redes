@@ -3,6 +3,7 @@ import asyncio
 from threading import Thread, Lock
 from time import sleep
 import os
+import recorder
 
 class tcp_server():
     class tcp_connection():
@@ -18,9 +19,10 @@ class tcp_server():
         self.listeners = listeners
         self.sock = None
         self.running = False
+        
 
         self.users = {
-            'login1': 'password1',
+            '1': '1',
         }
 
         self.mutex_connections = Lock()
@@ -67,18 +69,22 @@ class tcp_server():
                 if self.authentication(credentials) == True:
                     tcp_conn.auth = True
                     tcp_conn.conn.send(str.encode("AUTH_OK"))
+                    break
                 else:
                     tcp_conn.conn.send(str.encode("AUTH_FAIL"))
 
             # control commands loop
             while True:
+                print("Esperando comando")
                 msg = tcp_conn.conn.recv(2048)
                 if not msg:
                     self.remove_connection(tcp_conn)
                     break
-
+                print(msg)
                 text = msg.decode().strip()
                 self.handle_command(tcp_conn, text)
+
+
 
         except ConnectionResetError:
             print(f"{tcp_conn.addr} disconnected unexpectedly.")
@@ -88,25 +94,44 @@ class tcp_server():
             print(f"Connection with {tcp_conn.addr} closed.")
 
     def handle_command(self, tcp_conn, cmd):
-            parts = cmd.split()
 
-            if len(parts) == 0:
-                return
 
-            if parts[0] == "PLAY_FILE":
-                if len(parts) < 2:
-                    tcp_conn.conn.send(b"ERROR Missing filename\n")
-                    return
-                filename = parts[1]
-                self.send_recorded_audio(tcp_conn, filename)
-                return
+        if cmd == "PLAY_LIVE":
+            self.send_live_audio(tcp_conn, None)
+            return
 
-            tcp_conn.conn.send(b"ERROR Unknown command\n")
+        tcp_conn.conn.send(b"ERROR Unknown command\n")
 
-    def send_recorded_audio(self, tcp_conn, filename):
-        folder = "audio"  # pasta onde você guarda os arquivos
-        path = os.path.join(folder, filename)
+    def send_live_audio(self, tcp_conn, filename):
 
+
+        r = recorder.Recorder()
+
+        stream = r.rec.open(
+            format=r.format,
+            channels=r.channels,
+            rate=r.rate,
+            input=True,
+            frames_per_buffer=r.frames_p_buffer
+        )
+
+        print("Now Recording.")
+
+        th = Thread(target=r.input_reading)
+        th.start()
+        while True:
+        #for i in range (int(r.rate/r.frames_p_buffer*0.1)):
+            chunk = stream.read(r.frames_p_buffer)
+            r.frames.append(chunk)
+            tcp_conn.conn.send(chunk)
+            #print("rodando")
+            if r.done:
+                tcp_conn.conn.send(str.encode("END_STREAM"))
+                break
+        
+        stream.stop_stream()
+        stream.close()
+        r.rec.terminate()
 
 
 
