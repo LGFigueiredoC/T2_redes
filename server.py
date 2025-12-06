@@ -2,6 +2,7 @@ from socket import *
 import asyncio
 from threading import Thread, Lock
 from time import sleep
+import os
 
 class tcp_server():
     class tcp_connection():
@@ -54,6 +55,7 @@ class tcp_server():
     
     def client_thread(self, tcp_conn):
         try:
+            # authentication loop
             while not tcp_conn.auth:
                 credentials = tcp_conn.conn.recv(2048)
                 credentials = credentials.decode("utf-8")
@@ -68,20 +70,15 @@ class tcp_server():
                 else:
                     tcp_conn.conn.send(str.encode("AUTH_FAIL"))
 
-            print(f"{tcp_conn.addr} authenticated successfully.")
-
-
-
-
+            # control commands loop
             while True:
-                data = tcp_conn.conn.recv(2048)
-                if not data:
+                msg = tcp_conn.conn.recv(2048)
+                if not msg:
                     self.remove_connection(tcp_conn)
-                    print(f"{tcp_conn.addr} disconnected.")
                     break
 
-                print(f"[{tcp_conn.addr}] {data.decode()}")
-
+                text = msg.decode().strip()
+                self.handle_command(tcp_conn, text)
 
         except ConnectionResetError:
             print(f"{tcp_conn.addr} disconnected unexpectedly.")
@@ -89,6 +86,29 @@ class tcp_server():
         finally:
             tcp_conn.conn.close()
             print(f"Connection with {tcp_conn.addr} closed.")
+
+    def handle_command(self, tcp_conn, cmd):
+            parts = cmd.split()
+
+            if len(parts) == 0:
+                return
+
+            if parts[0] == "PLAY_FILE":
+                if len(parts) < 2:
+                    tcp_conn.conn.send(b"ERROR Missing filename\n")
+                    return
+                filename = parts[1]
+                self.send_recorded_audio(tcp_conn, filename)
+                return
+
+            tcp_conn.conn.send(b"ERROR Unknown command\n")
+
+    def send_recorded_audio(self, tcp_conn, filename):
+        folder = "audio"  # pasta onde você guarda os arquivos
+        path = os.path.join(folder, filename)
+
+
+
 
     def authentication(self, credentials: str):
         login, password = credentials.split(':')

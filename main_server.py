@@ -3,11 +3,11 @@ import time
 import threading
 
 async def main():
-    server1 = tcp_server(host='', port=8080, listeners=1)
+    control_server = tcp_server(host='', port=8080, listeners=1)
     
-    server1.start()
+    control_server.start()
 
-    await server1.menu()
+    await control_server.menu()
     
 
 if __name__ == "__main__":

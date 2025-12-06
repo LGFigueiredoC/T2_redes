@@ -1,6 +1,7 @@
 from socket import *
 from threading import Thread
 from time import sleep
+import asyncio
 import pyaudio
 
 
@@ -54,16 +55,66 @@ class tcp_client():
             print(f"Authentication error: {err}")
             return False
     
-    def send_message(self, message):
-        try:
-            response = self.sock.recv(2048)
-            print(f"Server says: {response.decode()}")
+    def authentication_loop(self):
+        i = 5
+        while True:
+            login = input("Login: ")
+            password = input("Password: ")
+            if self.authenticate(login, password):
+                print("Login successful!")
+                break
+            else:
+                i -= 1
+                if i == 0:
+                    print("Maximum authentication attempts reached.")
+                    self.close()
+                    exit()
 
-            self.sock.send(str.encode(message))
-        
-        except OSError as err:
-            print(f"Message error: {err}")
-    
+                print(f"Invalid credentials, please try again. {i} attempts left.")
+
+    def command_loop(self):
+        while True:
+            print("\nMenu:")
+            print("1. PLAY LIVE")
+            print("2. PLAY RECORDED")
+            print("3. SHOW AVAILABLE FILES")
+            print("4. QUIT")
+
+            choice = input("Enter your choice:")
+            
+            if choice == '1':
+                filename = input("Enter file name to play: ")
+                record = input("Save content? (y/n) ")
+                # rodar live udp
+            elif choice == '2':
+                filename = input("Enter file name to play: ")
+                record = input("Save content? (y/n) ")
+
+                save = (record.lower() == "y")
+                self.receive_recorded(filename, save)
+
+            elif choice == '3':
+                # mandar request pro servidor
+                pass
+            elif choice == '4':
+                break
+            else:
+                print("Invalid option")
+
+    def request_recorded(self, filename):
+        cmd = f"PLAY_FILE {filename}"
+        self.sock.send(cmd.encode())
+
+    def receive_recorded(self, filename, save_file):
+        self.request_recorded(filename)
+
+        header = self.sock.recv(1024).decode()
+        if not header.startswith("STREAM_START"):
+            print("Invalid stream header")
+            return
+
+
+
     def close(self):
         try:
             self.sock.close()
