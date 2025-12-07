@@ -5,6 +5,7 @@ from time import sleep
 import os
 import recorder
 import ssl
+import wave
 
 class tcp_server():
     class tcp_connection():
@@ -107,15 +108,51 @@ class tcp_server():
 
 
         if cmd == "PLAY_LIVE":
-            self.send_live_audio(tcp_conn, None)
+            self.send_live_audio(tcp_conn)
             return
         
         elif cmd == "SHOW_FILES":
             self.send_available_files(tcp_conn)
             return
+        
+        elif cmd.startswith("PLAY_RECORDED"):
+            _, filename = cmd.split()
+            self.send_recorded_audio(tcp_conn, filename)
 
 
         tcp_conn.conn.send(b"ERROR Unknown command\n")
+
+    def send_recorded_audio(self, tcp_conn, filename):
+        file_path = os.path.join(self.audio_dir, filename)
+        
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            error_msg = b"END_STREAM"
+            tcp_conn.conn.send(error_msg)
+            return
+
+        print(f"Streaming recorded audio '{filename}' to {tcp_conn.addr}...")
+        
+        try:
+            with wave.open(file_path, 'rb') as wf:
+                chunk_size = 1024
+                
+                while True:
+                    data = wf.readframes(chunk_size)
+                    if not data:
+                        break
+                    
+                    tcp_conn.conn.send(data)
+
+            print(f"Successfully streamed '{filename}'.")
+            
+        except Exception as e:
+            print(f"Error streaming file {filename}: {e}")
+            
+        finally:
+            try:
+                tcp_conn.conn.send(b"END_STREAM") 
+            except:
+                pass
 
     def send_available_files(self, tcp_conn):
         files = os.listdir(self.audio_dir)
@@ -128,7 +165,7 @@ class tcp_server():
 
         tcp_conn.conn.send(msg.encode())
 
-    def send_live_audio(self, tcp_conn, filename):
+    def send_live_audio(self, tcp_conn):
 
         r = recorder.Recorder()
 
@@ -163,8 +200,6 @@ class tcp_server():
             stream.stop_stream()
             stream.close()
             r.rec.terminate()
-
-
 
 
     def authentication(self, credentials: str):

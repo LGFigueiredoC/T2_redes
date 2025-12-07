@@ -108,7 +108,7 @@ class tcp_client():
             if choice == '1':
                 record = input("Save content? (y/n) ")
                 if record == 'y': 
-                    save_file = input("Save")
+                    save_file = input("Save file as: ")
                 else:
                     save_file = None
 
@@ -118,9 +118,13 @@ class tcp_client():
             elif choice == '2':
                 filename = input("Enter file name to play: ")
                 record = input("Save content? (y/n) ")
+                if record == 'y': 
+                    save_file = input("Save file as: ")
+                else:
+                    save_file = None
 
-                save = (record.lower() == "y")
-                self.receive_recorded(filename, save)
+                self.sock.send(str.encode(f"PLAY_RECORDED {filename}"))
+                self.receive_recorded(filename, save_file)
 
 
             elif choice == '3':
@@ -192,9 +196,58 @@ class tcp_client():
         receive_thread.start()
         play_thread.start()
 
-        print("Controle de reprodução:")
-        print("1. PAUSE/RESUME")
-        print("2. STOP")
+        print("\nCONTROLE DE REPRODUÇÃO [LIVE]:")
+        print("[1] PAUSE/RESUME")
+        print("[2] STOP")
+        while self.running:
+            cmd = input()
+            if cmd == "1":
+                self.paused = not self.paused 
+                if self.paused: print("Paused")
+                else: print("Resumed")
+            elif cmd == "2":
+                self.running = False
+                break
+
+        receive_thread.join()
+        play_thread.join()
+        
+
+        print("Transmissão encerrada")
+
+
+        if save_file != None:
+            if save_file != None and self.final_audio:
+                if not save_file.lower().endswith('.wav'):
+                    save_file += '.wav'
+
+            obj = wave.open(save_file, "wb")
+            obj.setnchannels(rec.channels)
+            obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
+            obj.setframerate(rec.rate/2)
+            with self.buffer_lock:
+                obj.writeframes(b"".join(self.final_audio))
+        
+        self.buffer.clear()
+
+    
+    def receive_recorded(self, filename, save_file):
+
+        self.paused = False
+        self.running = True
+        rec = recorder.Recorder() 
+        self.final_audio = []
+
+        receive_thread = Thread(target=self.receive_thread)
+        play_thread = Thread(target=self.play_thread)
+
+        receive_thread.start() 
+        play_thread.start()
+
+        # 3. Loop de Controle
+        print(f"\nCONTROLE DE REPRODUÇÃO [{filename}]:")
+        print("[1] PAUSE/RESUME")
+        print("[2] STOP")
         while self.running:
             cmd = input()
             if cmd == "1":
@@ -208,37 +261,21 @@ class tcp_client():
         receive_thread.join()
         play_thread.join()
         
+        print("Transmissão encerrada.")
 
-        print("Transmissão encerrada")
-
-        if save_file != None:
+        if save_file != None and self.final_audio:
+            if not save_file.lower().endswith('.wav'):
+                save_file += '.wav'
+                
             obj = wave.open(save_file, "wb")
             obj.setnchannels(rec.channels)
-            obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
-            obj.setframerate(rec.rate/2)
+            obj.setsampwidth(rec.rec.get_sample_size(rec.format)) 
+            obj.setframerate(rec.rate/2) 
             with self.buffer_lock:
                 obj.writeframes(b"".join(self.final_audio))
         
         self.buffer.clear()
-
-    
-    def receive_recorded(self, filename, save_file):
-        chunks = []
-        rec = recorder.Recorder()
-
-        while True:
-            data = self.sock.recv(1024)
-            if data == b"END_STREAM":
-                break
-            chunks.append(data)
-
-        print("Arquivo recebido")
-
-        obj = wave.open(filename, "wb")
-        obj.setnchannels(rec.channels)
-        obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
-        obj.setframerate(rec.rate/2)
-        obj.writeframes(b"".join(self.final_audio))
+        self.final_audio.clear()
 
 
     def close(self):
