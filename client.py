@@ -7,6 +7,7 @@ import pyaudio
 import wave
 import pygame
 import recorder
+import ssl
 
 
 class tcp_client():
@@ -21,13 +22,24 @@ class tcp_client():
         self.buffer = []
         self.buffer_lock = Lock()
 
+
     def start(self):
         print("Starting TCP client...")
         try:
-            self.sock = socket(family=AF_INET, type=SOCK_STREAM)
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+
+            raw_sock = socket(family=AF_INET, type=SOCK_STREAM)
+
+            self.sock = context.wrap_socket(raw_sock, server_hostname=self.host)
+
             self.sock.connect((self.host, int(self.port)))
             print(f"Connected to server at {self.host}:{self.port}")
-        
+            
+        except ssl.SSLError as ssl_err:
+             print(f"SSL error: {ssl_err}")
+             return False        
         except OSError as err:
             print(f"Socket error: {err}")
             return False

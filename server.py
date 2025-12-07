@@ -4,6 +4,7 @@ from threading import Thread, Lock
 from time import sleep
 import os
 import recorder
+import ssl
 
 class tcp_server():
     class tcp_connection():
@@ -20,6 +21,8 @@ class tcp_server():
         self.sock = None
         self.running = False
         
+        self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        self.context.load_cert_chain(certfile="server.crt", keyfile="server.key")
 
         self.users = {
             '1': '1',
@@ -48,12 +51,19 @@ class tcp_server():
             exit()
     
     def accept(self):
-        conn, addr = self.sock.accept()
-        tcp_conn = self.tcp_connection(conn, addr)
-        with self.mutex_connections:
-            self.connections.append(tcp_conn)
-        print(f"\nConnection accepted from {addr}")
-        return tcp_conn
+        try:
+            conn, addr = self.sock.accept()
+            conn_ssl = self.context.wrap_socket(conn, server_side=True)
+            tcp_conn = self.tcp_connection(conn_ssl, addr)
+            with self.mutex_connections:
+                self.connections.append(tcp_conn)
+            print(f"\nConnection accepted from {addr}")
+            return tcp_conn
+        
+        except ssl.SSLError as err:
+            print(f"SSL Handshake failed: {err}")
+            conn.close()
+            return None
     
     def client_thread(self, tcp_conn):
         try:
@@ -75,12 +85,12 @@ class tcp_server():
 
             # control commands loop
             while True:
-                print("Esperando comando")
+                # print("Esperando comando")
                 msg = tcp_conn.conn.recv(2048)
                 if not msg:
                     self.remove_connection(tcp_conn)
                     break
-                print(msg)
+                # print(msg)
                 text = msg.decode().strip()
                 self.handle_command(tcp_conn, text)
 
@@ -147,8 +157,9 @@ class tcp_server():
             try:
                 print("Server waiting for connections...")
                 tcp_conn = self.accept()
-                thread = Thread(target=self.client_thread, args=(tcp_conn,), daemon=True)
-                thread.start()
+                if tcp_conn != None :
+                    thread = Thread(target=self.client_thread, args=(tcp_conn,), daemon=True)
+                    thread.start()
             
             except OSError:
                 break
