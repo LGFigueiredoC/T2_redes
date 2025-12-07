@@ -53,12 +53,13 @@ class tcp_client():
             for s in range(5, 0, -1):
                 print(f"Retrying connection in {s} seconds...", end='\r')
                 sleep(1)
+            
+            print("Retrying connection:                     ")
 
-        print("Retrying connection:                     ")
-        attempts += 1
-        if attempts == 5:
-            print("Unable to connect. Exiting.")
-            exit()
+            attempts += 1
+            if attempts == 5:
+                print("Unable to connect. Exiting.")
+                exit()
 
     def authenticate(self, login, password):
         try:
@@ -96,20 +97,24 @@ class tcp_client():
 
     def command_loop(self):
         while True:
-            print("\nMenu:")
-            print("1. PLAY LIVE")
-            print("2. PLAY RECORDED")
-            print("3. SHOW AVAILABLE FILES")
-            print("4. QUIT")
+            print("\nCLIENT MENU:")
+            print("[1] PLAY LIVE")
+            print("[2] PLAY RECORDED")
+            print("[3] SHOW AVAILABLE FILES")
+            print("[4] QUIT")
 
-            choice = input("Enter your choice:")
+            choice = input("Enter your choice: ")
             
             if choice == '1':
-                filename = input("Enter file name to play: ")
                 record = input("Save content? (y/n) ")
+                if record == 'y': 
+                    save_file = input("Save")
+                else:
+                    save_file = None
+
                 self.sock.send(str.encode("PLAY_LIVE"))
-                self.receive_live(filename, record)
-                # rodar live udp
+                self.receive_live(save_file)
+
             elif choice == '2':
                 filename = input("Enter file name to play: ")
                 record = input("Save content? (y/n) ")
@@ -117,9 +122,13 @@ class tcp_client():
                 save = (record.lower() == "y")
                 self.receive_recorded(filename, save)
 
+
             elif choice == '3':
-                # mandar request pro servidor
-                pass
+                self.sock.send(str.encode("SHOW_FILES"))
+                files = self.sock.recv(1024)
+                print("\nFILES:")
+                print(files.decode())
+                
             elif choice == '4':
                 break
             else:
@@ -171,7 +180,7 @@ class tcp_client():
 
 
 
-    def receive_live(self, filename, save_file):
+    def receive_live(self, save_file):
 
         self.paused = False
         self.running = True
@@ -202,8 +211,8 @@ class tcp_client():
 
         print("Transmissão encerrada")
 
-        if save_file:
-            obj = wave.open(filename, "wb")
+        if save_file != None:
+            obj = wave.open(save_file, "wb")
             obj.setnchannels(rec.channels)
             obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
             obj.setframerate(rec.rate/2)

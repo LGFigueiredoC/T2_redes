@@ -1,3 +1,6 @@
 __pycache__
 env-redes
 *.json
+*.key
+*.crt
+audio

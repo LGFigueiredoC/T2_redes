@@ -27,6 +27,7 @@ class tcp_server():
         self.users = {
             '1': '1',
         }
+        self.audio_dir = "./audio"
 
         self.mutex_connections = Lock()
         self.connections = []
@@ -108,8 +109,24 @@ class tcp_server():
         if cmd == "PLAY_LIVE":
             self.send_live_audio(tcp_conn, None)
             return
+        
+        elif cmd == "SHOW_FILES":
+            self.send_available_files(tcp_conn)
+            return
+
 
         tcp_conn.conn.send(b"ERROR Unknown command\n")
+
+    def send_available_files(self, tcp_conn):
+        files = os.listdir(self.audio_dir)
+
+        output_lines = []
+        for i, filename in enumerate(files):
+            output_lines.append(f"{i + 1}. {filename}")
+        
+        msg = "\n".join(output_lines)
+
+        tcp_conn.conn.send(msg.encode())
 
     def send_live_audio(self, tcp_conn, filename):
 
@@ -171,10 +188,9 @@ class tcp_server():
         
     async def menu(self):
         while True:
-            print("\nServer Menu:")
-            print("1. List Connections")
-            print("2. Restart Server")
-            print("3. Exit\n")
+            print("\nSERVER MENU:")
+            print("[1] LIST CONNECTIONS")
+            print("[2] EXIT\n")
 
             choice = await asyncio.to_thread(input, "Enter your choice: ")
 
@@ -186,14 +202,8 @@ class tcp_server():
                         print("\nActive Connections:")
                         for i, tcp_conn in enumerate(self.connections):
                             print(f"{i+1} - {tcp_conn.addr} - Auth: {tcp_conn.auth}")
-            
+    
             elif choice == '2':
-                # ainda nao ta na moral
-                print("Restarting server...")
-                self.restart()
-                print("Server restarted.")
-
-            elif choice == '3':
                 print("Exiting server...")
                 self.close()
                 break
