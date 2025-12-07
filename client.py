@@ -1,5 +1,6 @@
 from socket import *
 from threading import Thread
+from threading import Lock
 from time import sleep
 import asyncio
 import pyaudio
@@ -17,6 +18,8 @@ class tcp_client():
 
         self.paused = False
         self.running = False
+        self.buffer = []
+        self.buffer_lock = Lock()
 
     def start(self):
         print("Starting TCP client...")
@@ -119,19 +122,26 @@ class tcp_client():
             if data == b"END_STREAM":
                 self.running = False
                 break
-            self.buffer.append(data)
+            with self.buffer_lock:
+               self.buffer.append(data)
     
     def play_thread(self):
         while self.running:
-            if self.is_paused:
+            if self.paused:
                 sleep(0.1)
                 continue
 
-            if len(self.buffer) == 0:
-                sleep(0.01)
-                continue
+            
+            with self.buffer_lock:
+                if len(self.buffer) > 0:
+                    chunk = self.buffer.pop(0)
+                else:
+                    chunk = None
 
-            chunk = self.buffer.pop(0)
+            if chunk is None:
+                sleep(0.01) 
+                continue
+            
             sound = pygame.mixer.Sound(buffer=chunk)
             sound.play()
 
@@ -139,13 +149,17 @@ class tcp_client():
 
     def receive_live(self, filename, save_file):
 
-        chunks = []
+        self.paused = False
+        self.running = True
         pygame.mixer.init()
         rec = recorder.Recorder()
         audio_data = []
 
-        receive_thread = Thread(target=self.receive_thread())
-        play_thread = Thread(target=self.play_thread())
+        receive_thread = Thread(target=self.receive_thread)
+        play_thread = Thread(target=self.play_thread)
+
+        receive_thread.start()
+        play_thread.start()
 
         print("Controle de reprodução:")
         print("1. PAUSE/RESUME")
@@ -154,6 +168,8 @@ class tcp_client():
             cmd = input()
             if cmd == "1":
                 self.paused = not self.paused
+                if self.paused: print("Paused")
+                else: print("Resumed")
             elif cmd == "2":
                 self.running = False
                 break
@@ -169,7 +185,10 @@ class tcp_client():
             obj.setnchannels(rec.channels)
             obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
             obj.setframerate(rec.rate/2)
-            obj.writeframes(b"".join(chunks))
+            with self.buffer_lock:
+                obj.writeframes(b"".join(self.buffer))
+        
+        self.buffer.clear()
 
     
     def receive_recorded(self, filename, save_file):
