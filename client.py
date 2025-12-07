@@ -15,6 +15,9 @@ class tcp_client():
         self.sock = None
         self.directory = directory
 
+        self.paused = False
+        self.running = False
+
     def start(self):
         print("Starting TCP client...")
         try:
@@ -110,39 +113,56 @@ class tcp_client():
     #     cmd = f"PLAY_FILE {filename}"
     #     self.sock.send(cmd.encode())
 
-    def receive_live(self, filename, save_file):
-        # self.request_recorded(filename)
+    def receive_thread(self):
+        while self.running:
+            data = self.sock.recv(1024)
+            if data == b"END_STREAM":
+                self.running = False
+                break
+            self.buffer.append(data)
+    
+    def play_thread(self):
+        while self.running:
+            if self.is_paused:
+                sleep(0.1)
+                continue
 
-        # header = self.sock.recv(1024).decode()
-        # if not header.startswith("STREAM_START"):
-        #     print("Invalid stream header")
-        #     return
+            if len(self.buffer) == 0:
+                sleep(0.01)
+                continue
+
+            chunk = self.buffer.pop(0)
+            sound = pygame.mixer.Sound(buffer=chunk)
+            sound.play()
+
+
+
+    def receive_live(self, filename, save_file):
+
         chunks = []
         pygame.mixer.init()
         rec = recorder.Recorder()
         audio_data = []
 
-        while True:
-            data = self.sock.recv(1024)
-            if data == b"END_STREAM":
+        receive_thread = Thread(target=self.receive_thread())
+        play_thread = Thread(target=self.play_thread())
+
+        print("Controle de reprodução:")
+        print("1. PAUSE/RESUME")
+        print("2. STOP")
+        while self.running:
+            cmd = input()
+            if cmd == "1":
+                self.paused = not self.paused
+            elif cmd == "2":
+                self.running = False
                 break
-            audio_data.append(data)
-            # print(len(audio_data))
-            if len(audio_data) >= 8:
-                obj = wave.open("audio.wav", "wb")
-                obj.setnchannels(rec.channels)
-                obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
-                obj.setframerate(rec.rate/2)
-                obj.writeframes(b"".join(audio_data))
 
-                audio = pygame.mixer.Sound("audio.wav")
-                audio.play()
+        receive_thread.join()
+        play_thread.join()
+        
 
-                chunks += audio_data
-                del audio_data[:]
-            
-
-        print("Arquivo recebido")
+        print("Transmissão encerrada")
 
         if save_file:
             obj = wave.open("audio.wav", "wb")
@@ -169,8 +189,6 @@ class tcp_client():
         obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
         obj.setframerate(rec.rate/2)
         obj.writeframes(b"".join(chunks))
-
-
 
 
     def close(self):
