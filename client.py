@@ -20,6 +20,7 @@ class tcp_client():
         self.paused = False
         self.running = False
         self.buffer = []
+        self.final_audio = []
         self.buffer_lock = Lock()
 
 
@@ -150,6 +151,7 @@ class tcp_client():
                 if len(self.buffer) > 4:
                     chunks = self.buffer[:4]
                     self.buffer = self.buffer[4:]
+                    self.final_audio = self.final_audio + chunks
                 else:
                     del chunks[:]
 
@@ -201,12 +203,12 @@ class tcp_client():
         print("Transmissão encerrada")
 
         if save_file:
-            obj = wave.open("audio.wav", "wb")
+            obj = wave.open(filename, "wb")
             obj.setnchannels(rec.channels)
             obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
             obj.setframerate(rec.rate/2)
             with self.buffer_lock:
-                obj.writeframes(b"".join(self.buffer))
+                obj.writeframes(b"".join(self.final_audio))
         
         self.buffer.clear()
 
@@ -223,11 +225,11 @@ class tcp_client():
 
         print("Arquivo recebido")
 
-        obj = wave.open("audio.wav", "wb")
+        obj = wave.open(filename, "wb")
         obj.setnchannels(rec.channels)
         obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
         obj.setframerate(rec.rate/2)
-        obj.writeframes(b"".join(chunks))
+        obj.writeframes(b"".join(self.final_audio))
 
 
     def close(self):

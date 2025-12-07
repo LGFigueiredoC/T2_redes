@@ -3,7 +3,7 @@ import time
 import threading
 
 async def main():
-    control_server = tcp_server(host='', port=8080, listeners=1)
+    control_server = tcp_server(host='0.0.0.0', port=8080, listeners=1)
     
     control_server.start()
 
