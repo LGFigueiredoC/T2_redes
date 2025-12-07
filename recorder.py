@@ -44,7 +44,10 @@ class Recorder ():
         obj.setnchannels(self.channels)
         obj.setsampwidth(self.rec.get_sample_size(self.format))
         obj.setframerate(self.rate)
-        obj.writeframes(b"".join(self.frames))     
+        obj.writeframes(b"".join(self.frames))
+
+    def stop(self):
+        self.done = True 
 
 
     def input_reading (self):

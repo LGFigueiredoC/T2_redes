@@ -95,7 +95,6 @@ class tcp_server():
                 self.handle_command(tcp_conn, text)
 
 
-
         except ConnectionResetError:
             print(f"{tcp_conn.addr} disconnected unexpectedly.")
         
@@ -114,7 +113,6 @@ class tcp_server():
 
     def send_live_audio(self, tcp_conn, filename):
 
-
         r = recorder.Recorder()
 
         stream = r.rec.open(
@@ -125,23 +123,30 @@ class tcp_server():
             frames_per_buffer=r.frames_p_buffer
         )
 
-        print("Now Recording.")
+        print(f"Streaming live audio to {tcp_conn.addr}...")
 
-        th = Thread(target=r.input_reading)
-        th.start()
-        while True:
-        #for i in range (int(r.rate/r.frames_p_buffer*0.1)):
-            chunk = stream.read(r.frames_p_buffer)
-            r.frames.append(chunk)
-            tcp_conn.conn.send(chunk)
-            #print("rodando")
-            if r.done:
-                tcp_conn.conn.send(str.encode("END_STREAM"))
-                break
+        try:
+            while True:
+                chunk = stream.read(r.frames_p_buffer)
+                r.frames.append(chunk)
+                tcp_conn.conn.send(chunk)
+
+        except (ConnectionResetError, BrokenPipeError, OSError):
+            print(f"Stream for {tcp_conn.addr} finished.")
         
-        stream.stop_stream()
-        stream.close()
-        r.rec.terminate()
+        except Exception as e:
+            print(f"Error during streaming: {e}")
+        
+        finally:
+            try:
+                tcp_conn.conn.send(str.encode("END_STREAM"))
+            except:
+                pass
+        
+            stream.stop_stream()
+            stream.close()
+            r.rec.terminate()
+
 
 
 
