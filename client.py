@@ -3,6 +3,9 @@ from threading import Thread
 from time import sleep
 import asyncio
 import pyaudio
+import wave
+import pygame
+import recorder
 
 
 class tcp_client():
@@ -115,18 +118,57 @@ class tcp_client():
         #     print("Invalid stream header")
         #     return
         chunks = []
+        pygame.mixer.init()
+        rec = recorder.Recorder()
+        audio_data = []
 
         while True:
             data = self.sock.recv(1024)
-            if data.decode("utf-8") == "END_STREAM":
+            if data == b"END_STREAM":
                 break
-            chunks.append(data)
-        
-        print("Arquivo recebido")
+            audio_data.append(data)
+            # print(len(audio_data))
+            if len(audio_data) >= 8:
+                obj = wave.open("audio.wav", "wb")
+                obj.setnchannels(rec.channels)
+                obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
+                obj.setframerate(rec.rate/2)
+                obj.writeframes(b"".join(audio_data))
 
+                audio = pygame.mixer.Sound("audio.wav")
+                audio.play()
+
+                chunks += audio_data
+                del audio_data[:]
             
 
+        print("Arquivo recebido")
 
+        if save_file:
+            obj = wave.open("audio.wav", "wb")
+            obj.setnchannels(rec.channels)
+            obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
+            obj.setframerate(rec.rate/2)
+            obj.writeframes(b"".join(chunks))
+
+    
+    def receive_recorded(self, filename, save_file):
+        chunks = []
+        rec = recorder.Recorder()
+
+        while True:
+            data = self.sock.recv(1024)
+            if data == b"END_STREAM":
+                break
+            chunks.append(data)
+
+        print("Arquivo recebido")
+
+        obj = wave.open("audio.wav", "wb")
+        obj.setnchannels(rec.channels)
+        obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
+        obj.setframerate(rec.rate/2)
+        obj.writeframes(b"".join(chunks))
 
 
 

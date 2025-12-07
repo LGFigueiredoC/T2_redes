@@ -39,13 +39,12 @@ class Recorder ():
         stream.close()
         self.rec.terminate()
     
-    def save_audio (self):
-        obj = wave.open("teste.wav", "wb")
+    def save_audio (self, name):
+        obj = wave.open(name, "wb")
         obj.setnchannels(self.channels)
         obj.setsampwidth(self.rec.get_sample_size(self.format))
         obj.setframerate(self.rate)
-        obj.writeframes(b"".join(self.frames))
-        
+        obj.writeframes(b"".join(self.frames))     
 
 
     def input_reading (self):
