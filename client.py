@@ -126,23 +126,33 @@ class tcp_client():
                self.buffer.append(data)
     
     def play_thread(self):
+        pygame.mixer.init()
+        rec = recorder.Recorder()
         while self.running:
             if self.paused:
                 sleep(0.1)
                 continue
 
-            
+            chunks = []
             with self.buffer_lock:
-                if len(self.buffer) > 0:
-                    chunk = self.buffer.pop(0)
+                if len(self.buffer) > 4:
+                    chunks = self.buffer[:4]
+                    self.buffer = self.buffer[4:]
                 else:
-                    chunk = None
+                    del chunks[:]
 
-            if chunk is None:
+            if len(chunks) == 0:
                 sleep(0.01) 
                 continue
-            
-            sound = pygame.mixer.Sound(buffer=chunk)
+
+            print(len(chunks))
+            obj = wave.open("audio.wav", "wb")
+            obj.setnchannels(rec.channels)
+            obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
+            obj.setframerate(rec.rate/2)
+            obj.writeframes(b"".join(chunks))
+
+            sound = pygame.mixer.Sound("audio.wav")
             sound.play()
 
 
@@ -151,9 +161,7 @@ class tcp_client():
 
         self.paused = False
         self.running = True
-        pygame.mixer.init()
         rec = recorder.Recorder()
-        audio_data = []
 
         receive_thread = Thread(target=self.receive_thread)
         play_thread = Thread(target=self.play_thread)
