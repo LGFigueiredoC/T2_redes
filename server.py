@@ -26,7 +26,7 @@ class tcp_server():
         self.context.load_cert_chain(certfile="server.crt", keyfile="server.key")
 
         self.users = {
-            '1': '1',
+            'user': 'login',
         }
         self.audio_dir = "./audio"
 
@@ -121,6 +121,17 @@ class tcp_server():
 
 
         tcp_conn.conn.send(b"ERROR Unknown command\n")
+
+    def send_available_files(self, tcp_conn):
+        files = os.listdir(self.audio_dir)
+
+        output_lines = []
+        for i, filename in enumerate(files):
+            output_lines.append(f"{i + 1}. {filename}")
+
+        msg = "\n".join(output_lines)
+
+        tcp_conn.conn.send(msg.encode())
 
     def send_recorded_audio(self, tcp_conn, filename):
         file_path = os.path.join(self.audio_dir, filename)
