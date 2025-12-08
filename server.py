@@ -6,6 +6,7 @@ import os
 import recorder
 import ssl
 import wave
+import json
 
 class tcp_server():
     class tcp_connection():
@@ -25,9 +26,9 @@ class tcp_server():
         self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         self.context.load_cert_chain(certfile="server.crt", keyfile="server.key")
 
-        self.users = {
-            'user': 'password',
-        }
+        with open ("client_info.json", "w") as info:
+            self.users = json.load(info)
+
         self.audio_dir = "./audio"
 
         self.mutex_connections = Lock()

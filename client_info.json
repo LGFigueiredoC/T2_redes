@@ -1,12 +1,6 @@
 {
-    "teste1":
-    {
-        "login": "logTeste",
-        "senha": "senhateste"
-    },
-    "teste2":
-    {
-        "login": "logTeste2",
-        "senha": "senhateste2"
-    }
+    "1": "1",
+    "user": "pass",
+    "artur": "artur",
+    "luiz": "luiz"
 }
