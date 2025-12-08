@@ -26,7 +26,7 @@ class tcp_server():
         self.context.load_cert_chain(certfile="server.crt", keyfile="server.key")
 
         self.users = {
-            'user': 'login',
+            'user': 'password',
         }
         self.audio_dir = "./audio"
 

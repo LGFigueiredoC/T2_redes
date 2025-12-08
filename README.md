@@ -35,7 +35,7 @@ Acesso padrão cadastrado:
     Login: user
     Senha: password
 
-Mais acessos podem ser criados no campo users da classe tcp_server em server.py
+Mais acessos podem ser criados no campo users da classe tcp_server em server.py.
 
 Então, pode-se escolher 4 opções:
 
