@@ -244,7 +244,7 @@ class tcp_client():
         receive_thread.start() 
         play_thread.start()
 
-        # 3. Loop de Controle
+        # Loop de Controle
         print(f"\nCONTROLE DE REPRODUÇÃO [{filename}]:")
         print("[1] PAUSE/RESUME")
         print("[2] STOP")
@@ -258,24 +258,33 @@ class tcp_client():
                 self.running = False
                 break
 
+        # Aguardar threads finalizarem
         receive_thread.join()
         play_thread.join()
         
         print("Transmissão encerrada.")
 
+        # Salvar arquivo se solicitado
         if save_file != None and self.final_audio:
             if not save_file.lower().endswith('.wav'):
                 save_file += '.wav'
-                
-            obj = wave.open(save_file, "wb")
-            obj.setnchannels(rec.channels)
-            obj.setsampwidth(rec.rec.get_sample_size(rec.format)) 
-            obj.setframerate(rec.rate/2) 
-            with self.buffer_lock:
-                obj.writeframes(b"".join(self.final_audio))
+            
+            try:
+                obj = wave.open(save_file, "wb")
+                obj.setnchannels(rec.channels)
+                obj.setsampwidth(rec.rec.get_sample_size(rec.format))  # CORREÇÃO: usar rec.format
+                obj.setframerate(rec.rate/2) 
+                with self.buffer_lock:
+                    obj.writeframes(b"".join(self.final_audio))
+                obj.close()
+                print(f"Arquivo salvo como: {save_file}")
+            except Exception as e:
+                print(f"Erro ao salvar arquivo: {e}")
         
-        self.buffer.clear()
-        self.final_audio.clear()
+        # Limpar buffers
+        with self.buffer_lock:
+            self.buffer.clear()
+            self.final_audio.clear()
 
 
     def close(self):

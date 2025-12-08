@@ -134,17 +134,33 @@ class tcp_server():
         
         try:
             with wave.open(file_path, 'rb') as wf:
-                chunk_size = 1024
+                # Obter informações do arquivo
+                channels = wf.getnchannels()
+                sampwidth = wf.getsampwidth()
+                framerate = wf.getframerate()
+                
+                # Calcular bytes por frame
+                bytes_per_frame = channels * sampwidth
+                
+                # Usar o mesmo tamanho de chunk do recorder (1024 frames)
+                chunk_frames = 1024
+                chunk_bytes = chunk_frames * bytes_per_frame
+                
+                # Calcular delay para simular streaming em tempo real
+                # delay = (chunk_frames / framerate) * 0.9  # 90% da velocidade real
+                
+                print(f"File info: {channels}ch, {sampwidth}bytes, {framerate}Hz")
                 
                 while True:
-                    data = wf.readframes(chunk_size)
+                    data = wf.readframes(chunk_frames)
                     if not data:
                         break
                     
                     tcp_conn.conn.send(data)
+                    # sleep(delay)  # Opcional: descomente para simular streaming real
 
-            print(f"Successfully streamed '{filename}'.")
-            
+                print(f"Successfully streamed '{filename}'.")
+                
         except Exception as e:
             print(f"Error streaming file {filename}: {e}")
             
@@ -153,17 +169,6 @@ class tcp_server():
                 tcp_conn.conn.send(b"END_STREAM") 
             except:
                 pass
-
-    def send_available_files(self, tcp_conn):
-        files = os.listdir(self.audio_dir)
-
-        output_lines = []
-        for i, filename in enumerate(files):
-            output_lines.append(f"{i + 1}. {filename}")
-        
-        msg = "\n".join(output_lines)
-
-        tcp_conn.conn.send(msg.encode())
 
     def send_live_audio(self, tcp_conn):
 
