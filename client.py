@@ -172,7 +172,7 @@ class tcp_client():
                 sleep(0.01) 
                 continue
 
-            print(len(chunks))
+            #print(len(chunks))
             obj = wave.open("audio.wav", "wb")
             obj.setnchannels(rec.channels)
             obj.setsampwidth(rec.rec.get_sample_size(rec.channels))
@@ -180,6 +180,7 @@ class tcp_client():
             obj.writeframes(b"".join(chunks))
 
             sound = pygame.mixer.Sound("audio.wav")
+            sound.set_volume(0.5)
             sound.play()
 
 

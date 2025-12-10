@@ -26,7 +26,7 @@ class tcp_server():
         self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         self.context.load_cert_chain(certfile="server.crt", keyfile="server.key")
 
-        with open ("client_info.json", "w") as info:
+        with open ("client_info.json", "r") as info:
             self.users = json.load(info)
 
         self.audio_dir = "./audio"
